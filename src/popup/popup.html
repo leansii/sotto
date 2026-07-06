@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <h1>Sotto</h1>
+    <span class="tagline">your words stay here</span>
+  </header>
+  <main id="sessions"></main>
+  <template id="session-row">
+    <div class="session">
+      <div class="meta">
+        <span class="title"></span>
+        <span class="sub"></span>
+      </div>
+      <div class="actions">
+        <button class="export-md" title="Export as Markdown">MD</button>
+        <button class="export-txt" title="Export as plain text">TXT</button>
+        <button class="delete" title="Delete transcript">✕</button>
+      </div>
+    </div>
+  </template>
+  <script src="popup.js"></script>
+</body>
+</html>
