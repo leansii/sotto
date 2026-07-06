@@ -45,33 +45,56 @@ const SottoCapture = (() => {
     return session;
   }
 
-  // Share of `b`'s words that also occur in `a` — cheap rewrite detector.
-  function wordOverlap(a, b) {
-    const wa = new Set(a.toLowerCase().split(/\s+/));
-    const wb = b.toLowerCase().split(/\s+/).filter(Boolean);
-    if (!wb.length) return 0;
-    let hits = 0;
-    for (const w of wb) if (wa.has(w)) hits++;
-    return hits / wb.length;
+  // Words normalized for comparison (lowercase, punctuation stripped), each
+  // with the char offset where it ends in the original text.
+  function tokenize(text) {
+    const tokens = [];
+    const re = /\S+/g;
+    let m;
+    while ((m = re.exec(text))) {
+      const norm = m[0].toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+      if (norm) tokens.push({ norm, end: re.lastIndex });
+    }
+    return tokens;
   }
 
   // Reconcile the text we hold with a fresh caption snapshot. Live captions
-  // grow word-by-word, get partially rewritten as the recognizer corrects
-  // itself, and roll (old words drop off the front) — naive replace loses
-  // text, naive append duplicates it.
+  // grow word-by-word, get re-punctuated as the recognizer corrects itself,
+  // and roll (old words drop off the front) — naive replace loses text,
+  // naive append duplicates it. Comparison is on normalized words because
+  // re-renders routinely change case and punctuation inside the overlap.
   function mergeCaption(oldText, newText) {
     if (!oldText) return newText;
     if (oldText === newText || oldText.endsWith(newText)) return oldText;
     if (newText.startsWith(oldText)) return newText;
-    // Rolled window: longest suffix of old that prefixes new joins them.
-    const max = Math.min(oldText.length, newText.length);
-    for (let k = max; k >= 12; k--) {
-      if (oldText.endsWith(newText.slice(0, k))) return oldText + newText.slice(k);
+
+    const ot = tokenize(oldText);
+    const nt = tokenize(newText);
+
+    // Longest k where the last k words of old are the first k words of new —
+    // the snapshots overlap; append only what follows the overlap.
+    for (let k = Math.min(ot.length, nt.length); k >= 3; k--) {
+      let match = true;
+      for (let i = 0; i < k; i++) {
+        if (ot[ot.length - k + i].norm !== nt[i].norm) { match = false; break; }
+      }
+      if (!match) continue;
+      if (k === nt.length) {
+        // New adds no words: full re-punctuation → prefer the corrected
+        // version; a tail-only repeat → keep what we have.
+        return k === ot.length ? newText : oldText;
+      }
+      return oldText + ' ' + newText.slice(nt[k - 1].end).trimStart();
     }
-    // Mostly the same words → in-place correction: take the new version.
-    if (wordOverlap(oldText, newText) >= 0.6 && newText.length >= oldText.length * 0.7) {
-      return newText.length >= oldText.length ? newText : oldText;
+
+    // High word overlap but no clean join → in-place correction; keep the
+    // recognizer's latest version unless it lost most of the text.
+    const seen = new Set(ot.map(t => t.norm));
+    const hits = nt.filter(t => seen.has(t.norm)).length;
+    if (nt.length && hits / nt.length >= 0.6) {
+      return newText.length >= oldText.length * 0.7 ? newText : oldText;
     }
+
     // Genuinely new content with no overlap — continuation after a jump.
     return oldText + ' ' + newText;
   }
