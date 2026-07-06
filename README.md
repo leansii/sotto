@@ -22,7 +22,8 @@ Sotto takes the opposite approach:
   collects the caption text the platform itself produces. Turn captions on,
   Sotto does the rest.
 - **You own the output.** Export any session as Markdown or plain text with
-  one click; delete it just as easily.
+  one click; delete it just as easily. When a call tab closes, the transcript
+  is also auto-saved as `.txt` to `Downloads/Sotto/` (toggle in the popup).
 
 ## Install
 
@@ -47,6 +48,14 @@ Meet and Zoom change their DOM without notice. All selectors live in one
 place — [`src/selectors.js`](src/selectors.js) — with instructions at the top.
 If capture stops working, that file is almost certainly the fix, and PRs
 updating it are welcome.
+
+Zoom specifics (verified against several open-source caption scrapers): the
+meeting UI is rendered inside a same-origin iframe `#webclient`, the subtitle
+overlay is `.live-transcription-subtitle__box` (each child is one speaker
+turn: avatar image + caption text; the speaker name is recovered from the
+participant tile showing the same avatar), and the full transcript panel uses
+`.lt-full-transcript__item`. If only the overlay is available, Zoom shows a
+short rolling window — open *View full transcript* for reliable history.
 
 ## Privacy model, honestly stated
 

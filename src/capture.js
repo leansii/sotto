@@ -76,7 +76,13 @@ const SottoCapture = (() => {
     }, POLL_MS);
 
     setInterval(flush, FLUSH_MS);
-    window.addEventListener('beforeunload', flush);
+
+    // Best-effort end-of-call signal (triggers auto-save). Tab close is also
+    // covered by tabs.onRemoved in the background worker.
+    window.addEventListener('beforeunload', () => {
+      if (!session) return;
+      chrome.runtime.sendMessage({ type: 'session-end', session }).catch(() => {});
+    });
   }
 
   return { start };

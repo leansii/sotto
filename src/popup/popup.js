@@ -1,44 +1,3 @@
-const PLATFORM_LABEL = { meet: 'Google Meet', zoom: 'Zoom' };
-
-function fmtDate(iso) {
-  const d = new Date(iso);
-  return d.toLocaleString(undefined, {
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit',
-  });
-}
-
-function fmtTime(iso) {
-  return new Date(iso).toLocaleTimeString(undefined, {
-    hour: '2-digit', minute: '2-digit', second: '2-digit',
-  });
-}
-
-function toMarkdown(s) {
-  const lines = [
-    `# ${PLATFORM_LABEL[s.platform] || s.platform} — ${s.title}`,
-    '',
-    `Started: ${fmtDate(s.startedAt)}`,
-    '',
-  ];
-  for (const e of s.entries) {
-    lines.push(`**${e.speaker}** (${fmtTime(e.at)}): ${e.text}`, '');
-  }
-  return lines.join('\n');
-}
-
-function toText(s) {
-  const lines = [
-    `${PLATFORM_LABEL[s.platform] || s.platform} — ${s.title}`,
-    `Started: ${fmtDate(s.startedAt)}`,
-    '',
-  ];
-  for (const e of s.entries) {
-    lines.push(`[${fmtTime(e.at)}] ${e.speaker}: ${e.text}`);
-  }
-  return lines.join('\n');
-}
-
 function download(filename, content) {
   const url = URL.createObjectURL(new Blob([content], { type: 'text/plain;charset=utf-8' }));
   const a = document.createElement('a');
@@ -48,10 +7,15 @@ function download(filename, content) {
   URL.revokeObjectURL(url);
 }
 
-function safeName(s, ext) {
-  const date = s.startedAt.slice(0, 10);
-  const title = s.title.replace(/[^\p{L}\p{N} _-]/gu, '').trim().slice(0, 40) || 'session';
-  return `${date} ${title}.${ext}`;
+async function initAutosaveToggle() {
+  const checkbox = document.getElementById('autosave');
+  const { settings = {} } = await chrome.storage.local.get('settings');
+  checkbox.checked = settings.autoSaveTxt !== false;
+  checkbox.onchange = async () => {
+    const { settings = {} } = await chrome.storage.local.get('settings');
+    settings.autoSaveTxt = checkbox.checked;
+    await chrome.storage.local.set({ settings });
+  };
 }
 
 async function render() {
@@ -73,9 +37,11 @@ async function render() {
     const row = tpl.content.firstElementChild.cloneNode(true);
     row.querySelector('.title').textContent = s.title;
     row.querySelector('.sub').textContent =
-      `${PLATFORM_LABEL[s.platform] || s.platform} · ${fmtDate(s.startedAt)} · ${s.entries.length} entries`;
-    row.querySelector('.export-md').onclick = () => download(safeName(s, 'md'), toMarkdown(s));
-    row.querySelector('.export-txt').onclick = () => download(safeName(s, 'txt'), toText(s));
+      `${SottoFormat.label(s)} · ${SottoFormat.fmtDate(s.startedAt)} · ${s.entries.length} entries`;
+    row.querySelector('.export-md').onclick = () =>
+      download(SottoFormat.filename(s, 'md'), SottoFormat.toMarkdown(s));
+    row.querySelector('.export-txt').onclick = () =>
+      download(SottoFormat.filename(s, 'txt'), SottoFormat.toText(s));
     row.querySelector('.delete').onclick = async () => {
       if (!confirm(`Delete transcript "${s.title}"? This cannot be undone.`)) return;
       const { sessions = {} } = await chrome.storage.local.get('sessions');
@@ -87,4 +53,5 @@ async function render() {
   }
 }
 
+initAutosaveToggle();
 render();

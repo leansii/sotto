@@ -35,38 +35,35 @@ const SOTTO_SELECTORS = {
   },
 
   zoom: {
-    // Live subtitle overlay (single rolling line, no history).
-    container: [
+    // NOTE: on app.zoom.us the meeting UI lives inside a same-origin iframe
+    // `#webclient` — adapters/zoom.js resolves the right document before
+    // querying; these selectors apply to that inner document.
+    //
+    // Live subtitle overlay. Each direct child of the box is one speaker
+    // turn: first child is the avatar <img> (or a name node), last child is
+    // the caption text. Structure parsing lives in adapters/zoom.js.
+    overlayContainer: [
+      '.live-transcription-subtitle__box',
       '#live-transcription-subtitle',
-      'div[class*="live-transcription-subtitle"]',
-    ],
-    entry: [
-      'div[class*="live-transcription-subtitle__item"]',
-      'span',
-    ],
-    speaker: [
-      'span[class*="user-name"]',
-    ],
-    text: [
-      'span[class*="text"]',
+      '[class*="live-transcription-subtitle"]',
     ],
     // Full transcript side panel ("Captions" > "View full transcript") —
-    // richer than the overlay, preferred when open.
+    // keeps history, preferred over the rolling overlay when open.
     panelContainer: [
-      '.lt-container__list',
-      'div[class*="transcript-list"]',
+      '#full-transcription',
+      '.lt-full-transcript',
     ],
     panelEntry: [
-      '.lt-item',
-      'div[class*="transcript-item"]',
+      '.lt-full-transcript__item',
+      '[class*="full-transcript__item"]',
     ],
     panelSpeaker: [
-      '.lt-item__name',
-      'div[class*="transcript-item__name"]',
+      '[class*="name"]',
     ],
     panelText: [
-      '.lt-item__msg',
-      'div[class*="transcript-item__msg"]',
+      '[class*="msg"]',
+      '[class*="text"]',
+      'p',
     ],
   },
 };
@@ -80,6 +77,16 @@ function sottoQuery(root, candidates) {
     } catch (_) { /* invalid selector — skip */ }
   }
   return null;
+}
+
+// True if the element matches any candidate selector.
+function sottoMatches(el, candidates) {
+  for (const sel of candidates) {
+    try {
+      if (el.matches(sel)) return true;
+    } catch (_) { /* invalid selector — skip */ }
+  }
+  return false;
 }
 
 // Returns elements for the first candidate selector that matches anything.
