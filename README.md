@@ -21,6 +21,9 @@ Sotto takes the opposite approach:
 - **No audio processing.** Sotto does not record or transcribe audio; it
   collects the caption text the platform itself produces. Turn captions on,
   Sotto does the rest.
+- **Works from a background tab.** Captions are captured with a
+  MutationObserver, which Chrome does not throttle when the tab is hidden —
+  switching away from the call tab does not lose transcript.
 - **You own the output.** Export any session as Markdown or plain text with
   one click; delete it just as easily. When a call tab closes, the transcript
   is also auto-saved as `.txt` to `Downloads/Sotto/` (toggle in the popup).

@@ -1,7 +1,14 @@
 // Shared capture engine. A platform adapter (meet.js / zoom.js) calls
-// SottoCapture.start(adapter) once; the engine polls the caption DOM,
-// tracks caption blocks as they grow word-by-word, and persists the
-// session to chrome.storage.local via the background worker.
+// SottoCapture.start(adapter) once; the engine watches the caption DOM and
+// persists the session to chrome.storage.local via the background worker.
+//
+// Captions are read via MutationObserver, not polling: Chrome throttles
+// timers in background tabs to about once a minute, which would lose
+// everything the rolling subtitle overlay showed in between. Observers fire
+// regardless of tab visibility. A slow interval remains only to (re)discover
+// the caption container — worst case, captions enabled while the tab is
+// hidden attach with up to a minute of delay, but once attached nothing is
+// missed.
 //
 // Adapter contract:
 //   platform: 'meet' | 'zoom'
@@ -9,11 +16,18 @@
 //   readEntries(container): [{ node: Element, speaker: string, text: string }]
 
 const SottoCapture = (() => {
-  const POLL_MS = 500;
-  const FLUSH_MS = 3000;
+  const SCAN_MS = 2000;
+  const FLUSH_EVERY_MS = 2500;
+
+  // Platform status lines that show up in the caption area but aren't speech.
+  const SYSTEM_MESSAGES =
+    /turned on live transcription|live transcription (is )?(on|off|enabled|disabled)|closed caption/i;
 
   let session = null;
   let dirty = false;
+  let lastFlush = 0;
+  let observer = null;
+  let observedContainer = null;
   // Live caption blocks mutate in place as words arrive; track each DOM node
   // to its transcript entry so we update rather than duplicate.
   let nodeToEntry = new WeakMap();
@@ -31,35 +45,66 @@ const SottoCapture = (() => {
     return session;
   }
 
+  // Share of `b`'s words that also occur in `a` — cheap rewrite detector.
+  function wordOverlap(a, b) {
+    const wa = new Set(a.toLowerCase().split(/\s+/));
+    const wb = b.toLowerCase().split(/\s+/).filter(Boolean);
+    if (!wb.length) return 0;
+    let hits = 0;
+    for (const w of wb) if (wa.has(w)) hits++;
+    return hits / wb.length;
+  }
+
+  // Reconcile the text we hold with a fresh caption snapshot. Live captions
+  // grow word-by-word, get partially rewritten as the recognizer corrects
+  // itself, and roll (old words drop off the front) — naive replace loses
+  // text, naive append duplicates it.
+  function mergeCaption(oldText, newText) {
+    if (!oldText) return newText;
+    if (oldText === newText || oldText.endsWith(newText)) return oldText;
+    if (newText.startsWith(oldText)) return newText;
+    // Rolled window: longest suffix of old that prefixes new joins them.
+    const max = Math.min(oldText.length, newText.length);
+    for (let k = max; k >= 12; k--) {
+      if (oldText.endsWith(newText.slice(0, k))) return oldText + newText.slice(k);
+    }
+    // Mostly the same words → in-place correction: take the new version.
+    if (wordOverlap(oldText, newText) >= 0.6 && newText.length >= oldText.length * 0.7) {
+      return newText.length >= oldText.length ? newText : oldText;
+    }
+    // Genuinely new content with no overlap — continuation after a jump.
+    return oldText + ' ' + newText;
+  }
+
   function upsert(platform, node, speaker, text) {
     text = (text || '').trim();
-    if (!text) return;
+    if (!text || SYSTEM_MESSAGES.test(text)) return;
     const s = ensureSession(platform);
     let entry = nodeToEntry.get(node);
     if (!entry) {
-      // A caption block sometimes gets re-created mid-sentence; if the last
-      // entry for this speaker is a prefix of the new text, treat it as the
-      // same utterance instead of appending a duplicate.
+      // Caption blocks get re-created mid-utterance; a consecutive block by
+      // the same speaker continues their entry instead of starting a new one.
       const last = s.entries[s.entries.length - 1];
-      if (last && last.speaker === speaker &&
-          (text.startsWith(last.text) || last.text.startsWith(text))) {
+      if (last && last.speaker === speaker) {
         entry = last;
-        nodeToEntry.set(node, entry);
       } else {
         entry = { at: new Date().toISOString(), speaker, text: '' };
         s.entries.push(entry);
-        nodeToEntry.set(node, entry);
       }
+      nodeToEntry.set(node, entry);
     }
-    if (entry.text !== text) {
-      entry.text = text;
+    const merged = mergeCaption(entry.text, text);
+    if (entry.text !== merged) {
+      entry.text = merged;
       s.updatedAt = new Date().toISOString();
       dirty = true;
     }
   }
 
-  function flush() {
+  function flush(force) {
     if (!dirty || !session) return;
+    if (!force && Date.now() - lastFlush < FLUSH_EVERY_MS) return;
+    lastFlush = Date.now();
     dirty = false;
     chrome.runtime.sendMessage({ type: 'session-update', session }).catch(() => {
       // Extension reloaded/updated mid-call — nothing we can do from here.
@@ -67,15 +112,27 @@ const SottoCapture = (() => {
   }
 
   function start(adapter) {
-    setInterval(() => {
-      const container = adapter.findContainer();
-      if (!container) return;
+    function readAll(container) {
       for (const { node, speaker, text } of adapter.readEntries(container)) {
         upsert(adapter.platform, node, speaker || 'Speaker', text);
       }
-    }, POLL_MS);
+      flush(false);
+    }
 
-    setInterval(flush, FLUSH_MS);
+    setInterval(() => {
+      const container = adapter.findContainer();
+      if (container && container !== observedContainer) {
+        observer?.disconnect();
+        observedContainer = container;
+        observer = new MutationObserver(() => readAll(container));
+        observer.observe(container, { childList: true, subtree: true, characterData: true });
+        readAll(container);
+      }
+      // Backstop for a tail left unflushed when mutations went quiet.
+      if (dirty && Date.now() - lastFlush > 5000) flush(true);
+    }, SCAN_MS);
+
+    document.addEventListener('visibilitychange', () => flush(true));
 
     // Best-effort end-of-call signal (triggers auto-save). Tab close is also
     // covered by tabs.onRemoved in the background worker.
