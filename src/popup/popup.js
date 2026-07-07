@@ -7,15 +7,27 @@ function download(filename, content) {
   URL.revokeObjectURL(url);
 }
 
-async function initAutosaveToggle() {
-  const checkbox = document.getElementById('autosave');
+async function saveSetting(key, value) {
   const { settings = {} } = await chrome.storage.local.get('settings');
-  checkbox.checked = settings.autoSaveTxt !== false;
-  checkbox.onchange = async () => {
-    const { settings = {} } = await chrome.storage.local.get('settings');
-    settings.autoSaveTxt = checkbox.checked;
-    await chrome.storage.local.set({ settings });
-  };
+  settings[key] = value;
+  await chrome.storage.local.set({ settings });
+}
+
+async function initSettings() {
+  const { settings = {} } = await chrome.storage.local.get('settings');
+
+  const autosave = document.getElementById('autosave');
+  autosave.checked = settings.autoSaveTxt !== false;
+  autosave.onchange = () => saveSetting('autoSaveTxt', autosave.checked);
+
+  const autocc = document.getElementById('autocc');
+  autocc.checked = settings.autoEnableCaptions !== false;
+  autocc.onchange = () => saveSetting('autoEnableCaptions', autocc.checked);
+
+  const lang = document.getElementById('meet-lang');
+  lang.value = settings.meetLang || '';
+  if (lang.value !== (settings.meetLang || '')) lang.value = ''; // stored value not in list
+  lang.onchange = () => saveSetting('meetLang', lang.value);
 }
 
 async function render() {
@@ -53,5 +65,5 @@ async function render() {
   }
 }
 
-initAutosaveToggle();
+initSettings();
 render();

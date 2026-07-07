@@ -97,4 +97,18 @@ footer label {
   align-items: center;
   gap: 6px;
   cursor: pointer;
+  margin: 4px 0;
+}
+
+footer .select-row {
+  justify-content: space-between;
+}
+
+footer select {
+  border: 1px solid #d8d5cd;
+  background: #fff;
+  border-radius: 5px;
+  padding: 2px 4px;
+  font-size: 12px;
+  max-width: 170px;
 }

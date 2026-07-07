@@ -32,6 +32,15 @@ const SOTTO_SELECTORS = {
       '.bh44bd',
       '.iTTPOb',
     ],
+    // Opens the caption settings panel (language lives there). The gear is
+    // near the caption bar; aria-labels are localized, so icon-ligature
+    // lookup in adapters/meet.js is the primary path and these are hints.
+    captionSettingsButton: [
+      'button[aria-label*="caption settings" i]',
+      'button[aria-label*="настройки субтитров" i]',
+      '.NmXUuc [role="button"]',
+      '.NmXUuc button',
+    ],
   },
 
   zoom: {

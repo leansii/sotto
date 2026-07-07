@@ -1,21 +1,37 @@
 {
   "manifest_version": 3,
   "name": "Sotto — local meeting transcripts",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Captures live captions from Google Meet and Zoom (web) into local-only transcripts. No servers, no accounts, no telemetry.",
-  "permissions": ["storage", "unlimitedStorage", "downloads"],
+  "permissions": [
+    "storage",
+    "unlimitedStorage",
+    "downloads"
+  ],
   "background": {
     "service_worker": "src/background.js"
   },
   "content_scripts": [
     {
-      "matches": ["https://meet.google.com/*"],
-      "js": ["src/selectors.js", "src/capture.js", "src/adapters/meet.js"],
+      "matches": [
+        "https://meet.google.com/*"
+      ],
+      "js": [
+        "src/selectors.js",
+        "src/capture.js",
+        "src/adapters/meet.js"
+      ],
       "run_at": "document_idle"
     },
     {
-      "matches": ["https://*.zoom.us/wc/*"],
-      "js": ["src/selectors.js", "src/capture.js", "src/adapters/zoom.js"],
+      "matches": [
+        "https://*.zoom.us/wc/*"
+      ],
+      "js": [
+        "src/selectors.js",
+        "src/capture.js",
+        "src/adapters/zoom.js"
+      ],
       "run_at": "document_idle"
     }
   ],
