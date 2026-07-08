@@ -30,11 +30,15 @@ Sotto takes the opposite approach:
 
 ## Install
 
-There is no Web Store listing (and won't be — reviewability is the point):
+From source (the auditable way — the code you read is the code you run):
 
 1. Clone this repo.
 2. Open `chrome://extensions`, enable **Developer mode**.
 3. Click **Load unpacked** and select the repo directory.
+
+A Chrome Web Store listing is on its way for one-click installs; the source
+here always stays the reference. See [PRIVACY.md](PRIVACY.md) for the privacy
+policy (spoiler: nothing is collected).
 
 ## Use
 
