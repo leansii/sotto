@@ -55,8 +55,11 @@ One-time setup:
 
 ```sh
 brew install whisper-cpp
-./scripts/whisper-server.sh   # first run downloads the model (~1.6 GB)
+./scripts/whisper-server.sh      # first run downloads the model (~1.6 GB)
+./scripts/install-launchd.sh     # optional: start at login, restart on crash
 ```
+
+Idle cost of the always-on server: ~1.8 GB RAM, zero CPU/GPU.
 
 Then in a call: open the Sotto popup → **Start HQ**. Two audio channels are
 captured — the tab (the other side) and your microphone (you) — which gives
