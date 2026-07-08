@@ -55,6 +55,9 @@ const SOTTO_SELECTORS = {
       '#live-transcription-subtitle',
       '[class*="live-transcription-subtitle"]',
     ],
+    overlayText: [
+      '.live-transcription-subtitle__item',
+    ],
     // Full transcript side panel ("Captions" > "View full transcript") —
     // keeps history, preferred over the rolling overlay when open.
     panelContainer: [

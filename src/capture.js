@@ -165,5 +165,12 @@ const SottoCapture = (() => {
     });
   }
 
-  return { start };
+  return {
+    start,
+    mergeCaption,
+    // True when newText continues/overlaps oldText (same utterance);
+    // false when it is disjoint content (utterance boundary).
+    continues: (oldText, newText) =>
+      !oldText || mergeCaption(oldText, newText) !== oldText + ' ' + newText,
+  };
 })();
