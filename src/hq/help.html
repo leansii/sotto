@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Sotto — HQ recording setup</title>
+  <style>
+    body { font: 15px/1.55 -apple-system, system-ui, sans-serif; max-width: 640px; margin: 60px auto; padding: 0 20px; color: #222; background: #fdfdfb; }
+    h1 { font-size: 22px; } h2 { font-size: 17px; margin-top: 28px; }
+    code, pre { font-family: ui-monospace, Menlo, monospace; font-size: 13px; background: #f3f1ea; border-radius: 5px; }
+    code { padding: 1px 5px; }
+    pre { padding: 10px 12px; overflow-x: auto; }
+    li { margin: 6px 0; }
+    .note { color: #666; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <h1>HQ recording — setup</h1>
+  <p>HQ mode records the call audio and transcribes it with a
+  <strong>local</strong> Whisper model. Quality is far better than platform
+  captions, and audio never leaves your machine — the only network target is
+  <code>127.0.0.1</code>.</p>
+
+  <h2>One-time setup (macOS)</h2>
+  <ol>
+    <li>Install the engine:
+      <pre>brew install whisper-cpp</pre></li>
+    <li>Download the model and start the server (first download is ~1.6 GB):
+      <pre>mkdir -p ~/.sotto/models
+curl -L -o ~/.sotto/models/ggml-large-v3-turbo.bin \
+  https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin
+whisper-server -m ~/.sotto/models/ggml-large-v3-turbo.bin --host 127.0.0.1 --port 8123</pre>
+      <p class="note">If you cloned the <a href="https://github.com/leansii/sotto">repo</a>,
+      use <code>./scripts/whisper-server.sh</code> instead, and
+      <code>./scripts/install-launchd.sh</code> to start the server at login
+      automatically (idle cost: ~1.8 GB RAM, zero CPU).</p></li>
+    <li>On the first <strong>Start HQ</strong> a microphone-permission page
+      opens — allow it, otherwise only the other side of the call is
+      transcribed.</li>
+  </ol>
+
+  <h2>Recording</h2>
+  <ol>
+    <li>Be on the call tab, open the Sotto popup.</li>
+    <li>Pick the language (<code>ru</code>/<code>en</code>/<code>auto</code>) →
+      <strong>Start HQ</strong>. The icon shows a green <strong>HQ</strong>
+      badge.</li>
+    <li>Entries appear with a 10–25 s delay — chunks are cut on silence.
+      Your voice is labeled «Вы», the tab audio «Собеседник».</li>
+    <li><strong>Stop HQ</strong> when done — or just close the tab; the
+      transcript saves automatically.</li>
+  </ol>
+
+  <h2>Troubleshooting</h2>
+  <ul>
+    <li><em>whisper-server not running</em> — check
+      <code>curl http://127.0.0.1:8123/</code>; launchd logs:
+      <code>~/.sotto/logs/whisper-server.log</code>.</li>
+    <li><em>No «Вы» entries</em> — mic permission wasn't granted; start a
+      recording and accept the page it opens.</li>
+  </ul>
+</body>
+</html>

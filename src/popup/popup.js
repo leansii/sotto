@@ -87,6 +87,9 @@ async function initHq() {
   langSel.value = settings.hqLang || 'ru';
   langSel.onchange = () => saveSetting('hqLang', langSel.value);
 
+  document.getElementById('hq-help').onclick = () =>
+    chrome.tabs.create({ url: chrome.runtime.getURL('src/hq/help.html') });
+
   const refresh = async () => {
     const { hq } = await chrome.storage.session.get('hq');
     const on = !!hq;
@@ -102,7 +105,8 @@ async function initHq() {
       await chrome.runtime.sendMessage({ type: 'hq-stop' });
     } else {
       if (!(await serverAlive())) {
-        status.textContent = 'whisper-server not running — see scripts/whisper-server.sh';
+        status.textContent = 'whisper-server not running — opening setup guide';
+        chrome.tabs.create({ url: chrome.runtime.getURL('src/hq/help.html') });
         return;
       }
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });

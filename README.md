@@ -49,28 +49,69 @@ There is no Web Store listing (and won't be — reviewability is the point):
 
 Platform captions are convenient but mediocre, especially for Russian. HQ
 mode records the call audio and transcribes it with a local Whisper model —
-quality is dramatically better, and audio still never leaves the machine.
+quality is dramatically better, and audio still never leaves the machine:
+the only network target is `127.0.0.1`.
 
-One-time setup:
+### One-time setup (macOS)
 
-```sh
-brew install whisper-cpp
-./scripts/whisper-server.sh      # first run downloads the model (~1.6 GB)
-./scripts/install-launchd.sh     # optional: start at login, restart on crash
-```
+1. Install the Whisper engine:
 
-Idle cost of the always-on server: ~1.8 GB RAM, zero CPU/GPU.
+   ```sh
+   brew install whisper-cpp
+   ```
 
-Then in a call: open the Sotto popup → **Start HQ**. Two audio channels are
-captured — the tab (the other side) and your microphone (you) — which gives
-speaker attribution for free. Chunks are cut on silence boundaries and sent
-to `whisper-server` on `127.0.0.1:8123` only. The first start opens a
-one-time microphone-permission page.
+2. Start the server — the first run downloads the model (~1.6 GB) into
+   `~/.sotto/models`:
 
-Notes: the whisper session appears in the popup alongside caption sessions
-(captions keep working in parallel as a fallback); stop recording before
-closing the call tab, or it stops and saves automatically when the tab
-closes.
+   ```sh
+   ./scripts/whisper-server.sh
+   ```
+
+   Recommended: install the launchd agent instead, so the server starts at
+   login and restarts on crash — then you never think about it again:
+
+   ```sh
+   ./scripts/install-launchd.sh
+   ```
+
+   Idle cost of the always-on server: ~1.8 GB RAM, zero CPU/GPU.
+
+   No repo checkout? The script boils down to:
+
+   ```sh
+   mkdir -p ~/.sotto/models
+   curl -L -o ~/.sotto/models/ggml-large-v3-turbo.bin \
+     https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin
+   whisper-server -m ~/.sotto/models/ggml-large-v3-turbo.bin --host 127.0.0.1 --port 8123
+   ```
+
+3. Grant microphone access on first use: the first **Start HQ** opens a
+   one-time permission page. Without it only the other side of the call is
+   transcribed.
+
+### Recording
+
+1. Be on the call tab (Meet, Zoom — any tab with audio, actually).
+2. Sotto popup → pick the Whisper language (`ru`/`en`/`auto`) → **Start HQ**.
+   The extension icon shows a green **HQ** badge while recording.
+3. Two channels are captured: the tab (labeled «Собеседник») and your mic
+   («Вы») — speaker attribution for free. Chunks are cut on silence
+   boundaries, so entries appear with a 10–25 s delay.
+4. **Stop HQ** when done — or just close the tab: the recording stops and
+   the transcript auto-saves like any other session.
+
+Caption capture keeps working in parallel — it's the fallback and the source
+of real speaker names.
+
+### Troubleshooting
+
+- Popup says **whisper-server not running**: check `curl http://127.0.0.1:8123/`;
+  agent logs are in `~/.sotto/logs/whisper-server.log`.
+- Port 8123 is taken: the port is currently fixed on the extension side —
+  free the port (or change `WHISPER_PORT` in `src/popup/popup.js` and
+  `SOTTO_WHISPER_PORT` for the server, and reload the extension).
+- No «Вы» entries: microphone permission was not granted — start a recording
+  and accept the permission page it opens.
 
 ## When it breaks
 

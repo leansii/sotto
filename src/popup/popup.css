@@ -99,6 +99,12 @@ button.delete {
   color: #666;
 }
 
+#hq-help {
+  padding: 3px 7px;
+  border-radius: 50%;
+  color: #888;
+}
+
 #hq-status.on {
   color: #1a7f4f;
   font-weight: 600;
