@@ -65,5 +65,57 @@ async function render() {
   }
 }
 
+const WHISPER_PORT = 8123;
+
+async function serverAlive() {
+  try {
+    // Any HTTP response (even 404) means the server is up; only a network
+    // error means it isn't.
+    await fetch(`http://127.0.0.1:${WHISPER_PORT}/`, { method: 'GET' });
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+async function initHq() {
+  const status = document.getElementById('hq-status');
+  const toggle = document.getElementById('hq-toggle');
+  const langSel = document.getElementById('hq-lang');
+
+  const { settings = {} } = await chrome.storage.local.get('settings');
+  langSel.value = settings.hqLang || 'ru';
+  langSel.onchange = () => saveSetting('hqLang', langSel.value);
+
+  const refresh = async () => {
+    const { hq } = await chrome.storage.session.get('hq');
+    const on = !!hq;
+    status.textContent = on ? `Recording: ${hq.title.slice(0, 24)}` : 'HQ recording off';
+    status.classList.toggle('on', on);
+    toggle.textContent = on ? 'Stop HQ' : 'Start HQ';
+    return on;
+  };
+  await refresh();
+
+  toggle.onclick = async () => {
+    if (await refresh()) {
+      await chrome.runtime.sendMessage({ type: 'hq-stop' });
+    } else {
+      if (!(await serverAlive())) {
+        status.textContent = 'whisper-server not running — see scripts/whisper-server.sh';
+        return;
+      }
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      const r = await chrome.runtime.sendMessage({
+        type: 'hq-start', tabId: tab.id, title: tab.title, language: langSel.value, port: WHISPER_PORT,
+      });
+      if (!r?.ok) { status.textContent = 'Failed: ' + (r?.error || 'unknown'); return; }
+    }
+    await refresh();
+    render();
+  };
+}
+
 initSettings();
+initHq();
 render();

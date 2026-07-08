@@ -2,7 +2,7 @@
 // service worker (via importScripts).
 
 const SottoFormat = (() => {
-  const PLATFORM_LABEL = { meet: 'Google Meet', zoom: 'Zoom' };
+  const PLATFORM_LABEL = { meet: 'Google Meet', zoom: 'Zoom', whisper: 'HQ (Whisper)' };
 
   function fmtDate(iso) {
     return new Date(iso).toLocaleString(undefined, {
@@ -21,9 +21,13 @@ const SottoFormat = (() => {
     return PLATFORM_LABEL[s.platform] || s.platform;
   }
 
+  function sorted(s) {
+    return [...s.entries].sort((a, b) => a.at.localeCompare(b.at));
+  }
+
   function toMarkdown(s) {
     const lines = [`# ${label(s)} — ${s.title}`, '', `Started: ${fmtDate(s.startedAt)}`, ''];
-    for (const e of s.entries) {
+    for (const e of sorted(s)) {
       lines.push(`**${e.speaker}** (${fmtTime(e.at)}): ${e.text}`, '');
     }
     return lines.join('\n');
@@ -31,7 +35,7 @@ const SottoFormat = (() => {
 
   function toText(s) {
     const lines = [`${label(s)} — ${s.title}`, `Started: ${fmtDate(s.startedAt)}`, ''];
-    for (const e of s.entries) {
+    for (const e of sorted(s)) {
       lines.push(`[${fmtTime(e.at)}] ${e.speaker}: ${e.text}`);
     }
     return lines.join('\n');

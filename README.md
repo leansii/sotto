@@ -45,6 +45,30 @@ There is no Web Store listing (and won't be — reviewability is the point):
 3. Sotto captures in the background; the extension icon shows a **REC** badge.
 4. Open the popup to export or delete transcripts.
 
+## HQ recording (local Whisper)
+
+Platform captions are convenient but mediocre, especially for Russian. HQ
+mode records the call audio and transcribes it with a local Whisper model —
+quality is dramatically better, and audio still never leaves the machine.
+
+One-time setup:
+
+```sh
+brew install whisper-cpp
+./scripts/whisper-server.sh   # first run downloads the model (~1.6 GB)
+```
+
+Then in a call: open the Sotto popup → **Start HQ**. Two audio channels are
+captured — the tab (the other side) and your microphone (you) — which gives
+speaker attribution for free. Chunks are cut on silence boundaries and sent
+to `whisper-server` on `127.0.0.1:8123` only. The first start opens a
+one-time microphone-permission page.
+
+Notes: the whisper session appears in the popup alongside caption sessions
+(captions keep working in parallel as a fallback); stop recording before
+closing the call tab, or it stops and saves automatically when the tab
+closes.
+
 ## When it breaks
 
 Meet and Zoom change their DOM without notice. All selectors live in one

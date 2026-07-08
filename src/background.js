@@ -6,7 +6,49 @@
 
 importScripts('format.js');
 
+// --- HQ recording (tab + mic → local whisper-server) -----------------------
+
+async function ensureOffscreen() {
+  if (await chrome.offscreen.hasDocument()) return;
+  await chrome.offscreen.createDocument({
+    url: 'src/offscreen/offscreen.html',
+    reasons: ['USER_MEDIA'],
+    justification: 'Capture tab and microphone audio for local-only transcription',
+  });
+}
+
+async function hqStart({ tabId, title, language, port }) {
+  const streamId = await chrome.tabCapture.getMediaStreamId({ targetTabId: tabId });
+  await ensureOffscreen();
+  await chrome.runtime.sendMessage({ type: 'hq-capture-start', streamId, title, language, port });
+  await chrome.storage.session.set({ hq: { tabId, title } });
+  chrome.action.setBadgeText({ tabId, text: 'HQ' });
+  chrome.action.setBadgeBackgroundColor({ tabId, color: '#1a7f4f' });
+}
+
+async function hqStop() {
+  const { hq } = await chrome.storage.session.get('hq');
+  await chrome.runtime.sendMessage({ type: 'hq-capture-stop' }).catch(() => {});
+  await chrome.storage.session.remove('hq');
+  if (hq?.tabId != null) chrome.action.setBadgeText({ tabId: hq.tabId, text: '' }).catch(() => {});
+}
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.type === 'hq-start') {
+    hqStart(msg).then(() => sendResponse({ ok: true }), (e) => sendResponse({ ok: false, error: String(e) }));
+    return true;
+  }
+  if (msg.type === 'hq-stop') {
+    hqStop().then(() => sendResponse({ ok: true }));
+    return true;
+  }
+  if (msg.type === 'hq-stopped') {
+    chrome.offscreen.closeDocument().catch(() => {});
+  }
+  if (msg.type === 'hq-mic-denied') {
+    // One-time grant page; next recording picks the mic up automatically.
+    chrome.tabs.create({ url: chrome.runtime.getURL('src/hq/mic.html') });
+  }
   if (msg.type === 'session-update' && msg.session) {
     persist(msg.session, sender.tab?.id).then(() => sendResponse({ ok: true }));
     if (sender.tab?.id != null) {
@@ -27,6 +69,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 // tab-closed event is the reliable auto-save trigger; session-end on
 // navigation is the best-effort fast path. savedAt makes the two idempotent.
 chrome.tabs.onRemoved.addListener(async (tabId) => {
+  const { hq } = await chrome.storage.session.get('hq');
+  if (hq?.tabId === tabId) await hqStop(); // offscreen flushes and ends the session
+
   const { tabSessions = {} } = await chrome.storage.session.get('tabSessions');
   const sessionId = tabSessions[tabId];
   if (!sessionId) return;
