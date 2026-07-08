@@ -20,6 +20,50 @@
 // engine under per-utterance token objects instead of the DOM node.
 
 (() => {
+  const TAG = '[Sotto]';
+
+  const settings = { autoEnableCaptions: true };
+  chrome.storage.local.get('settings').then(({ settings: s }) => Object.assign(settings, s));
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && changes.settings) Object.assign(settings, changes.settings.newValue);
+  });
+
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  // Zoom's React menus ignore bare .click(); they need the full pointer
+  // sequence (verified live via CDP).
+  function fullClick(el) {
+    for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click']) {
+      el.dispatchEvent(new MouseEvent(type, {
+        bubbles: true, cancelable: true, view: el.ownerDocument.defaultView, buttons: 1,
+      }));
+    }
+  }
+
+  // The web client has no "always show captions" setting (unlike desktop),
+  // so turn them on once per page load: More → Captions. If the user then
+  // hides them, we don't fight it.
+  let ccTried = false;
+  async function autoEnableCaptions(doc) {
+    if (ccTried || settings.autoEnableCaptions === false) return;
+    if (!doc.querySelector('[class*="footer"]')) return; // not in the meeting yet
+    const more = [...doc.querySelectorAll('button,[role="button"]')].find((b) =>
+      /^(more|ещё|еще)$/i.test((b.getAttribute('aria-label') || b.textContent || '').trim()));
+    if (!more) return;
+    ccTried = true;
+    fullClick(more);
+    await sleep(700);
+    const cap = [...doc.querySelectorAll('a.dropdown-item,[role="menuitem"]')].find((e) =>
+      /^(captions|субтитры)$/i.test(e.textContent.trim()) && e.offsetParent !== null);
+    if (cap) {
+      fullClick(cap);
+      console.log(TAG, 'zoom captions enabled');
+    } else {
+      fullClick(more); // put the menu back
+      console.log(TAG, 'Captions item not found in More menu (host may have captions disabled)');
+    }
+  }
+
   function meetingDoc() {
     const iframe = document.querySelector('#webclient');
     try {
@@ -117,10 +161,11 @@
 
     findContainer() {
       const doc = meetingDoc();
-      return (
+      const container =
         sottoQuery(doc, SOTTO_SELECTORS.zoom.panelContainer) ||
-        sottoQuery(doc, SOTTO_SELECTORS.zoom.overlayContainer)
-      );
+        sottoQuery(doc, SOTTO_SELECTORS.zoom.overlayContainer);
+      if (!container) autoEnableCaptions(doc);
+      return container;
     },
 
     readEntries(container) {
