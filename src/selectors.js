@@ -28,18 +28,17 @@ const SOTTO_SELECTORS = {
     ],
     // Caption text, inside an entry block.
     text: [
+      '.ygicle',
       'div[jsname="YSxPC"]',
       '.bh44bd',
       '.iTTPOb',
     ],
-    // Opens the caption settings panel (language lives there). The gear is
-    // near the caption bar; aria-labels are localized, so icon-ligature
-    // lookup in adapters/meet.js is the primary path and these are hints.
+    // Opens the Settings dialog on the Captions tab (language lives there).
+    // aria-labels are localized; the gear icon-ligature lookup in
+    // adapters/meet.js is the locale-independent fallback.
     captionSettingsButton: [
       'button[aria-label*="caption settings" i]',
       'button[aria-label*="настройки субтитров" i]',
-      '.NmXUuc [role="button"]',
-      '.NmXUuc button',
     ],
   },
 

@@ -73,9 +73,14 @@
 
     let options = visibleOptions();
     if (!options.length) {
-      // The panel opened but the language control is a closed combobox.
-      const combo = document.querySelector(
-        '[role="dialog"] [role="combobox"], [role="dialog"] select, [role="listbox"], [role="combobox"]');
+      // The Settings dialog opened on the Captions tab; the language control
+      // is a closed combobox titled "Language of the meeting" (localized) —
+      // pick the combobox mentioning a language, not font/color ones.
+      const combos = [...document.querySelectorAll(
+        '[role="dialog"] [role="combobox"], [role="dialog"] select')]
+        .filter((el) => el.offsetParent !== null);
+      const combo = combos.find((el) => /language|язык|мов[аи]|sprache|idioma|langue/i
+        .test((el.getAttribute('aria-label') || '') + ' ' + el.textContent)) || combos[0];
       if (combo) {
         combo.click();
         await sleep(500);
@@ -95,11 +100,15 @@
     }
     await sleep(400);
 
-    // Put the UI back: close icon in the opened panel, Escape as fallback.
+    // Put the UI back. Verified live: the dialog's close button carries
+    // aria-label "Close dialog" (localized), not an icon ligature.
     const dialog = document.querySelector('[role="dialog"]');
-    const closer = dialog && iconButton('close', dialog);
+    const closer = dialog && (
+      [...dialog.querySelectorAll('button')].find((b) =>
+        /close|закрыть|закрити|schließen|cerrar|fermer/i.test(b.getAttribute('aria-label') || '')) ||
+      iconButton('close', dialog));
     if (closer) closer.click();
-    else document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27, bubbles: true }));
+    else console.log(TAG, 'settings dialog close button not found — please close it manually');
   }
 
   // --- capture --------------------------------------------------------------
@@ -132,7 +141,10 @@
         out.push({
           node,
           speaker: speakerEl ? speakerEl.textContent.trim() : 'Speaker',
-          text: textEl ? textEl.textContent : node.textContent,
+          // Block layout is [header: avatar+name][text] — when the text
+          // selector rots, the last element child is the text, and taking
+          // node.textContent would glue the speaker name onto it.
+          text: (textEl || node.lastElementChild || node).textContent,
         });
       }
       return out;
