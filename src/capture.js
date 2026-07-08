@@ -117,8 +117,10 @@ const SottoCapture = (() => {
       nodeToEntry.set(node, entry);
     }
     const merged = mergeCaption(entry.text, text);
-    if (entry.text !== merged) {
+    if (entry.text !== merged || entry.speaker !== speaker) {
       entry.text = merged;
+      // Adapters may resolve a better label mid-utterance ("Speaker 2" → "D").
+      entry.speaker = speaker;
       s.updatedAt = new Date().toISOString();
       dirty = true;
     }

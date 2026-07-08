@@ -114,9 +114,12 @@
     return { key, name: speakerNames.get(key) };
   }
 
-  // Current utterance: engine entries are keyed by token objects because the
-  // overlay DOM node is never replaced.
-  let cur = { key: null, token: null, text: '' };
+  // Open utterance per speaker: engine entries are keyed by token objects
+  // because the overlay DOM node is never replaced. Per-speaker (not just
+  // "current") because when speakers interleave, the overlay flips away and
+  // then returns showing the earlier speaker's ACCUMULATED window — that must
+  // continue their utterance, not start a duplicate one.
+  const utterances = new Map(); // speaker key → { token, text }
 
   function readOverlay(container) {
     const doc = container.ownerDocument;
@@ -127,13 +130,28 @@
     if (!text) return [];
 
     const { key, name } = speakerIdentity(sub, textEl, doc);
-    const boundary = !cur.token || cur.key !== key || !SottoCapture.continues(cur.text, text);
-    if (boundary) {
-      cur = { key, token: {}, text };
-    } else {
-      cur.text = SottoCapture.mergeCaption(cur.text, text);
+    let u = utterances.get(key);
+    if (u && !SottoCapture.continues(u.text, text)) u = null;
+    if (!u) {
+      // The speaker key can flap mid-utterance (avatar <img> loads a moment
+      // after the initials bubble): if this text continues an utterance open
+      // under another key, it's the same person relabeled — migrate it.
+      for (const [k, other] of utterances) {
+        if (k !== key && other.text.length > 20 && SottoCapture.continues(other.text, text)) {
+          utterances.delete(k);
+          utterances.set(key, other);
+          u = other;
+          break;
+        }
+      }
     }
-    return [{ node: cur.token, speaker: name, text }];
+    if (!u) {
+      u = { token: {}, text };
+      utterances.set(key, u);
+    } else {
+      u.text = SottoCapture.mergeCaption(u.text, text);
+    }
+    return [{ node: u.token, speaker: name, text }];
   }
 
   function readPanel(container) {
