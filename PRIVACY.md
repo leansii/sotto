@@ -22,6 +22,15 @@ The extension makes no network requests to the internet.
 - **Exported transcripts** (.md / .txt) are plain files saved where you
   choose. Auto-saved transcripts go to your local Downloads folder.
 
+## Consent
+
+Capture is disabled until you enable it on the extension's first-run page,
+which describes what is captured and where it is stored. HQ audio recording
+additionally starts only on an explicit button press, and microphone access
+has its own permission step. By default the extension posts a notice into
+the meeting chat so other participants know a transcript is being kept.
+Complying with local conversation-recording laws is your responsibility.
+
 ## What Sotto shares
 
 Nothing, with anyone, ever. There is no third party involved. The developer
