@@ -49,6 +49,12 @@ coaching calls, or interviews.
 
 Sotto is open source: https://github.com/leansii/sotto
 
+Consent, stated plainly: capture is OFF until you enable it on the first-run
+page that explains exactly what is captured and where it is stored. By
+default Sotto also posts a short notice into the meeting chat so other
+participants know a transcript is being kept. Recording laws differ by
+jurisdiction — complying with them is your responsibility.
+
 Note: caption capture requires captions to be available in the call (for Zoom,
 the host account must have automated captions enabled). HQ mode requires
 installing the free open-source whisper.cpp engine locally — the extension
@@ -82,6 +88,15 @@ audio transcribed by a local AI model on the user's machine.
 - **Microphone (getUserMedia)**: Optional second HQ channel so the user's own
   voice is transcribed and attributed; requested via an explicit one-time
   permission page.
+
+## In-product disclosure & consent (reviewer-relevant)
+
+Per the User Data policy, prominent disclosure + consent happen inside the
+product: a first-run onboarding page describes what is captured (captions;
+audio only on explicit "Start HQ") and where it is stored (locally only);
+capture is disabled until the user consents there. Microphone use has its own
+explicit permission page. By default the extension posts a notice into the
+meeting chat informing other participants that a transcript is being kept.
 
 ## Data usage disclosures (dashboard checkboxes)
 

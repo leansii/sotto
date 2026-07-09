@@ -111,9 +111,32 @@
     else console.log(TAG, 'settings dialog close button not found — please close it manually');
   }
 
+  // --- chat announcement ------------------------------------------------------
+  // Posts the transcription notice into the in-call chat: open chat panel,
+  // set the textarea via the native value setter (React-controlled), send.
+  async function announceCapture(text) {
+    const chatBtn = iconButton('chat');
+    if (!chatBtn) return false;
+    chatBtn.click();
+    await sleep(1000);
+    const ta = document.querySelector('textarea');
+    if (!ta) { iconButton('chat')?.click(); return false; }
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(ta, text);
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+    await sleep(400);
+    const sendBtn = iconButton('send');
+    if (!sendBtn || sendBtn.disabled) { iconButton('chat')?.click(); return false; }
+    sendBtn.click();
+    await sleep(400);
+    iconButton('chat')?.click(); // close the panel back
+    console.log(TAG, 'transcription notice posted to chat');
+    return true;
+  }
+
   // --- capture --------------------------------------------------------------
   SottoCapture.start({
     platform: 'meet',
+    announceCapture,
 
     findContainer() {
       const container = sottoQuery(document, SOTTO_SELECTORS.meet.container);

@@ -24,6 +24,10 @@ async function initSettings() {
   autocc.checked = settings.autoEnableCaptions !== false;
   autocc.onchange = () => saveSetting('autoEnableCaptions', autocc.checked);
 
+  const chatNotify = document.getElementById('chat-notify');
+  chatNotify.checked = settings.chatNotify !== false;
+  chatNotify.onchange = () => saveSetting('chatNotify', chatNotify.checked);
+
   const lang = document.getElementById('meet-lang');
   lang.value = settings.meetLang || '';
   if (lang.value !== (settings.meetLang || '')) lang.value = ''; // stored value not in list
@@ -113,7 +117,14 @@ async function initHq() {
       const r = await chrome.runtime.sendMessage({
         type: 'hq-start', tabId: tab.id, title: tab.title, language: langSel.value, port: WHISPER_PORT,
       });
-      if (!r?.ok) { status.textContent = 'Failed: ' + (r?.error || 'unknown'); return; }
+      if (!r?.ok) {
+        if (/consent-required/.test(r?.error || '')) {
+          chrome.tabs.create({ url: chrome.runtime.getURL('src/onboarding/onboarding.html') });
+          return;
+        }
+        status.textContent = 'Failed: ' + (r?.error || 'unknown');
+        return;
+      }
     }
     await refresh();
     render();

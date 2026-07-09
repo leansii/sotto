@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Sotto — before we start</title>
+  <style>
+    body { font: 15px/1.6 -apple-system, system-ui, sans-serif; max-width: 560px; margin: 60px auto; padding: 0 20px; color: #222; background: #fdfdfb; }
+    h1 { font-size: 24px; }
+    .card { background: #fff; border: 1px solid #e4e2dc; border-radius: 10px; padding: 16px 18px; margin: 14px 0; }
+    .card h3 { margin: 0 0 6px; font-size: 15px; }
+    .card p { margin: 0; color: #555; font-size: 14px; }
+    button { font-size: 16px; padding: 10px 22px; border-radius: 8px; border: none; background: #1a7f4f; color: #fff; cursor: pointer; margin-top: 10px; }
+    button:hover { background: #16603d; }
+    .legal { color: #888; font-size: 13px; margin-top: 18px; }
+    #done { color: #1a7f4f; font-weight: 600; margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <h1>Sotto keeps transcripts of your calls.<br>Here is exactly what that means.</h1>
+
+  <div class="card">
+    <h3>What is captured</h3>
+    <p>Live captions that Google Meet / Zoom render in your browser, and — only
+    when you explicitly press «Start HQ» — the call audio and your microphone
+    for local AI transcription.</p>
+  </div>
+  <div class="card">
+    <h3>Where it goes</h3>
+    <p>Nowhere. Transcripts are stored in your browser's local storage on this
+    device. The extension makes no requests to the internet; in HQ mode audio
+    is sent only to <code>127.0.0.1</code> — your own computer. No accounts,
+    no analytics, no telemetry.</p>
+  </div>
+  <div class="card">
+    <h3>Other people are part of your calls</h3>
+    <p>Sotto can post a short notice into the meeting chat so participants
+    know a transcript is being kept (enabled by default, toggle in the popup).
+    Laws on recording conversations differ by country — complying with them
+    is your responsibility.</p>
+  </div>
+
+  <button id="consent">I understand — enable capture</button>
+  <div id="done"></div>
+
+  <p class="legal">You can review everything above at any time: the extension
+  is open source (github.com/leansii/sotto), and this page never expires —
+  capture stays off until you enable it here.</p>
+
+  <script src="onboarding.js"></script>
+</body>
+</html>

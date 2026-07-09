@@ -174,8 +174,33 @@
     return out;
   }
 
+  // Posts the transcription notice into the in-call chat. Zoom's chat editor
+  // is contenteditable; insertText + the send button (full pointer clicks).
+  async function announceCapture(text) {
+    const doc = meetingDoc();
+    const chatBtn = [...doc.querySelectorAll('button')].find((b) =>
+      /open the chat|чат/i.test(b.getAttribute('aria-label') || ''));
+    if (!chatBtn) return false;
+    fullClick(chatBtn);
+    await sleep(1200);
+    const editor = doc.querySelector('[contenteditable="true"]');
+    if (!editor) return false;
+    editor.focus();
+    doc.execCommand('insertText', false, text);
+    await sleep(400);
+    const send = [...doc.querySelectorAll('button')].find((b) =>
+      /^send( message)?$/i.test((b.getAttribute('aria-label') || b.textContent || '').trim()));
+    if (send) fullClick(send);
+    else editor.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', keyCode: 13, which: 13, bubbles: true }));
+    await sleep(400);
+    fullClick(chatBtn); // close the panel back
+    console.log(TAG, 'transcription notice posted to chat');
+    return true;
+  }
+
   SottoCapture.start({
     platform: 'zoom',
+    announceCapture,
 
     findContainer() {
       const doc = meetingDoc();

@@ -19,6 +19,10 @@ const SottoCapture = (() => {
   const SCAN_MS = 2000;
   const FLUSH_EVERY_MS = 2500;
 
+  const ANNOUNCE_TEXT =
+    'FYI: this call is being transcribed locally on my device (Sotto extension). / ' +
+    'Звонок транскрибируется локально на моём устройстве (расширение Sotto).';
+
   // Platform status lines that show up in the caption area but aren't speech.
   const SYSTEM_MESSAGES =
     /turned on live transcription|live transcription (is )?(on|off|enabled|disabled)|closed caption/i;
@@ -136,15 +140,49 @@ const SottoCapture = (() => {
     });
   }
 
+  // Consent (first-run onboarding) and chat-notify preferences. Capture is
+  // OFF until the user explicitly enables it — required for personal
+  // communications regardless of local-only processing.
+  const prefs = { consented: false, chatNotify: true };
+  chrome.storage.local.get('settings').then(({ settings: s = {} }) => {
+    prefs.consented = s.consented === true;
+    prefs.chatNotify = s.chatNotify !== false;
+  });
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'local' || !changes.settings) return;
+    const s = changes.settings.newValue || {};
+    prefs.consented = s.consented === true;
+    prefs.chatNotify = s.chatNotify !== false;
+  });
+
+  // Post a one-time notice into the call chat so other participants know a
+  // transcript is being kept. Best-effort: adapters implement the UI part.
+  let announced = false;
+  function maybeAnnounce(adapter) {
+    if (announced || !prefs.chatNotify || !adapter.announceCapture) return;
+    announced = true;
+    adapter.announceCapture(ANNOUNCE_TEXT).then((ok) => {
+      if (!ok) console.log('[Sotto] chat announcement failed — tell participants yourself');
+    }).catch(() => {});
+  }
+
   function start(adapter) {
     function readAll(container) {
       for (const { node, speaker, text } of adapter.readEntries(container)) {
         upsert(adapter.platform, node, speaker || 'Speaker', text);
       }
+      if (session) maybeAnnounce(adapter);
       flush(false);
     }
 
+    // HQ recording started on this tab (from the popup) — announce even
+    // before any captions are captured.
+    chrome.runtime.onMessage.addListener((msg) => {
+      if (msg.type === 'sotto-announce') maybeAnnounce(adapter);
+    });
+
     setInterval(() => {
+      if (!prefs.consented) return;
       const container = adapter.findContainer();
       if (container && container !== observedContainer) {
         observer?.disconnect();

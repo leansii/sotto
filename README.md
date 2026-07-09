@@ -132,6 +132,16 @@ participant tile showing the same avatar), and the full transcript panel uses
 `.lt-full-transcript__item`. If only the overlay is available, Zoom shows a
 short rolling window — open *View full transcript* for reliable history.
 
+## Consent — yours and theirs
+
+- **Yours**: capture is off until you enable it once on the first-run
+  onboarding page (it explains exactly what is captured and where it lives).
+- **Theirs**: other people are part of your calls. By default Sotto posts a
+  short notice into the meeting chat when a transcript is being kept
+  (toggle in the popup). Laws on recording conversations differ by
+  jurisdiction — complying with them is your responsibility, not the
+  extension's.
+
 ## Privacy model, honestly stated
 
 - Transcripts live unencrypted in your Chrome profile

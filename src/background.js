@@ -6,6 +6,15 @@
 
 importScripts('format.js');
 
+// First-run consent: capture stays off until the user enables it on the
+// onboarding page (required for personal communications, even local-only).
+chrome.runtime.onInstalled.addListener(async () => {
+  const { settings = {} } = await chrome.storage.local.get('settings');
+  if (!settings.consented) {
+    chrome.tabs.create({ url: chrome.runtime.getURL('src/onboarding/onboarding.html') });
+  }
+});
+
 // --- HQ recording (tab + mic → local whisper-server) -----------------------
 
 async function ensureOffscreen() {
@@ -18,12 +27,16 @@ async function ensureOffscreen() {
 }
 
 async function hqStart({ tabId, title, language, port }) {
+  const { settings = {} } = await chrome.storage.local.get('settings');
+  if (!settings.consented) throw new Error('consent-required');
   const streamId = await chrome.tabCapture.getMediaStreamId({ targetTabId: tabId });
   await ensureOffscreen();
   await chrome.runtime.sendMessage({ type: 'hq-capture-start', streamId, title, language, port });
   await chrome.storage.session.set({ hq: { tabId, title } });
   chrome.action.setBadgeText({ tabId, text: 'HQ' });
   chrome.action.setBadgeBackgroundColor({ tabId, color: '#1a7f4f' });
+  // Let participants know (content script posts to the call chat, if any).
+  chrome.tabs.sendMessage(tabId, { type: 'sotto-announce' }).catch(() => {});
 }
 
 async function hqStop() {
