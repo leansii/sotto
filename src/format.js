@@ -21,13 +21,32 @@ const SottoFormat = (() => {
     return PLATFORM_LABEL[s.platform] || s.platform;
   }
 
-  function sorted(s) {
-    return [...s.entries].sort((a, b) => a.at.localeCompare(b.at));
+  // Chronological entries with consecutive same-speaker chunks merged into
+  // one paragraph (HQ mode cuts speech every 8–25 s, which reads as a wall
+  // of fragments otherwise). Merging is presentation-only — stored entries
+  // stay as captured.
+  const MERGE_GAP_MS = 45000;
+
+  function paragraphs(s) {
+    const sorted = [...s.entries].sort((a, b) => a.at.localeCompare(b.at));
+    const flat = (t) => t.trim().replace(/\s*\n\s*/g, ' ');
+    const out = [];
+    for (const e of sorted) {
+      const prev = out[out.length - 1];
+      if (prev && prev.speaker === e.speaker &&
+          new Date(e.at) - new Date(prev.lastAt) < MERGE_GAP_MS) {
+        prev.text += ' ' + flat(e.text);
+        prev.lastAt = e.at;
+      } else {
+        out.push({ at: e.at, lastAt: e.at, speaker: e.speaker, text: flat(e.text) });
+      }
+    }
+    return out;
   }
 
   function toMarkdown(s) {
     const lines = [`# ${label(s)} — ${s.title}`, '', `Started: ${fmtDate(s.startedAt)}`, ''];
-    for (const e of sorted(s)) {
+    for (const e of paragraphs(s)) {
       lines.push(`**${e.speaker}** (${fmtTime(e.at)}): ${e.text}`, '');
     }
     return lines.join('\n');
@@ -35,7 +54,7 @@ const SottoFormat = (() => {
 
   function toText(s) {
     const lines = [`${label(s)} — ${s.title}`, `Started: ${fmtDate(s.startedAt)}`, ''];
-    for (const e of sorted(s)) {
+    for (const e of paragraphs(s)) {
       lines.push(`[${fmtTime(e.at)}] ${e.speaker}: ${e.text}`);
     }
     return lines.join('\n');

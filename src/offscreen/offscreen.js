@@ -46,7 +46,11 @@ async function start({ streamId, title, language, port }) {
 
   let micStream = null;
   try {
-    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    // Echo cancellation keeps the other side's voice (played through the
+    // speakers) out of the mic channel; headphones remove it completely.
+    micStream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+    });
   } catch (e) {
     // Mic permission not granted to the extension yet — background opens the
     // one-time grant page; recording continues with the tab side only.
@@ -124,9 +128,10 @@ class Channel {
     this.chunkStartedAt = null;
 
     const pcm = concat(parts);
-    if (voicedFraction(pcm) < MIN_VOICED_FRACTION) return; // silence — skip
+    const vf = voicedFraction(pcm);
+    if (vf < MIN_VOICED_FRACTION) return; // silence — skip
     // Serialize requests per channel so whisper-server isn't hammered.
-    this.busy = this.busy.then(() => transcribe(pcm, this.speaker, at)).catch(reportError);
+    this.busy = this.busy.then(() => transcribe(pcm, this.speaker, at, vf)).catch(reportError);
   }
 
   close() {
@@ -138,7 +143,7 @@ class Channel {
   }
 }
 
-async function transcribe(pcm, speaker, at) {
+async function transcribe(pcm, speaker, at, vf) {
   const form = new FormData();
   form.append('file', new Blob([wavEncode(pcm)], { type: 'audio/wav' }), 'chunk.wav');
   form.append('response_format', 'json');
@@ -149,6 +154,9 @@ async function transcribe(pcm, speaker, at) {
   const { text } = await res.json();
   const clean = (text || '').trim();
   if (!clean || isHallucination(clean)) return;
+  // Whisper invents short pleasantries («Спасибо.», "Thank you.") on chunks
+  // that barely contain voice — breathing, keyboard, room noise.
+  if (clean.split(/\s+/).length <= 3 && vf < 0.25) return;
 
   if (!session) return; // stopped while this chunk was in flight
   session.entries.push({ at, speaker, text: clean });
@@ -159,7 +167,7 @@ async function transcribe(pcm, speaker, at) {
 
 // Whisper's stock hallucinations on near-silence (RU/EN).
 function isHallucination(t) {
-  return /^(субтитры|продолжение следует|спасибо за просмотр|редактор субтитров|thanks for watching|you$)/i.test(t.trim());
+  return /^(субтитры|продолжение следует|спасибо за (просмотр|внимание)|редактор субтитров|благодарю за просмотр|thanks for watching|thank you for watching|you$)/i.test(t.trim());
 }
 
 function rms(a) {
