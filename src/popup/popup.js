@@ -97,7 +97,7 @@ async function initHq() {
   const refresh = async () => {
     const { hq } = await chrome.storage.session.get('hq');
     const on = !!hq;
-    status.textContent = on ? `Recording: ${hq.title.slice(0, 24)}` : 'HQ recording off';
+    status.textContent = on ? `Recording: ${(hq.title || 'tab').slice(0, 24)}` : 'HQ recording off';
     status.classList.toggle('on', on);
     toggle.textContent = on ? 'Stop HQ' : 'Start HQ';
     return on;

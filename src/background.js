@@ -32,7 +32,7 @@ async function hqStart({ tabId, title, language, port }) {
   const streamId = await chrome.tabCapture.getMediaStreamId({ targetTabId: tabId });
   await ensureOffscreen();
   await chrome.runtime.sendMessage({ type: 'hq-capture-start', streamId, title, language, port });
-  await chrome.storage.session.set({ hq: { tabId, title } });
+  await chrome.storage.session.set({ hq: { tabId, title: title || 'tab' } });
   chrome.action.setBadgeText({ tabId, text: 'HQ' });
   chrome.action.setBadgeBackgroundColor({ tabId, color: '#1a7f4f' });
   // Let participants know (content script posts to the call chat, if any).
